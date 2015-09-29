@@ -1,0 +1,347 @@
+package com.web2rev.DotConnect;
+
+import java.lang.Runnable;
+import android.app.Activity;
+import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
+import android.content.Context;
+import android.graphics.*;
+import android.util.Log;
+
+public class GameEngine implements Runnable {
+	public final String TAG="com.web2rev.DotConnect.GameEngine";
+	public int SEARCHPLY = 3;
+	public int game_board[] = new int[64];
+	public int draw_board[] = new int[64];
+	public int searchmoves[] = new int[9];
+	public Bitmap blue_animation[] = new Bitmap[13];
+	public Bitmap red_animation[] = new Bitmap[13];
+	public int ply = 0;
+	public int player = -1;
+	public int levelChoiceOffset = 3;
+	public int levelChoice = 0;
+	public boolean players_move = true;
+	public Thread searchengine = null;
+	public Bitmap board_image = null;
+	public Bitmap red_checker = null;
+	public Bitmap blue_checker = null;
+	public DotConnectActivity mainActivity = null;
+
+	public GameEngine(DotConnectActivity parentActivity) {
+		mainActivity = parentActivity;
+	}
+
+	public void EnableRestartButton(boolean enable) {
+	}
+
+	public void ShowYourTurnLabel() {
+	}
+
+	public void ShowThinkingLabel() {
+	}
+
+	public void repaint() {
+		mainActivity.runOnUiThread(new Runnable(){
+			@Override
+			public void run() {
+				mainActivity.gameView.invalidate();	
+			}
+		}); 
+	}
+
+	public void init() {
+		board_image =BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.con4));
+		blue_checker = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.blue));
+		red_checker = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.red));
+		blue_animation[0] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.b0));
+		red_animation[0] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.r0));
+		blue_animation[1] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.b1));
+		red_animation[1] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.r1));
+		blue_animation[2] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.b2));
+		red_animation[2] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.r2));
+		blue_animation[3] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.b3));
+		red_animation[3] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.r3));
+		blue_animation[4] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.b4));
+		red_animation[4] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.r4));
+		blue_animation[5] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.b5));
+		red_animation[5] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.r5));
+		blue_animation[6] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.b6));
+		red_animation[6] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.r6));
+		blue_animation[7] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.b7));
+		red_animation[7] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.r7));
+		blue_animation[8] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.b8));
+		red_animation[8] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.r8));
+		blue_animation[9] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.b9));
+		red_animation[9] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.r9));
+		blue_animation[10] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.b10));
+		red_animation[10] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.r10));
+		blue_animation[11] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.b11));
+		red_animation[11] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.r11));
+		blue_animation[12] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.b12));
+		red_animation[12] = BitmapFactory.decodeStream(mainActivity
+				.getResources().openRawResource(R.drawable.r12));
+		for (int x = 0; x < 64; x++)
+			game_board[x] = draw_board[x] = 0;
+		repaint();
+	}
+
+	public void resetGame() {
+		for (int x = 0; x < 64; x++)
+			game_board[x] = draw_board[x] = 0;
+		repaint();
+		ply = 0;
+		player = -1;
+		players_move = true;
+	}
+
+	public void start() {
+		if (!players_move) {
+			searchengine = new Thread(this);
+			searchengine.start();
+
+			Log.i(TAG, "searchengine.start()");
+		}
+	}
+
+	@Override
+	public void run() {
+		int y;
+		EnableRestartButton(false);
+		ShowThinkingLabel();
+		SEARCHPLY = levelChoice + levelChoiceOffset;
+		Log.i(TAG, "search()");
+		search();
+		make_move(searchmoves[0], 1);
+		Log.i(TAG, "make_move_game="+searchmoves[0]);
+		for (int xx = 0; xx < 64; xx++)
+			draw_board[xx] = game_board[xx];
+		/*
+		 * for(y=0;y<7 && draw_board[(y<<3)+searchmoves[0]]==0;++y) { for(int
+		 * a=0;a<13;++a) { try{Thread.sleep(25);}catch(Exception e){;}
+		 * g.drawImage(red_animation[a]
+		 * ,61+searchmoves[0]*29+9,6+searchmoves[0]*3+28*y+9,this); }
+		 * try{Thread.sleep(25);}catch(Exception e){;}
+		 * g.drawImage(red_animation[0]
+		 * ,61+searchmoves[0]*29+9,6+searchmoves[0]*3+28*y+9,this); }
+		 * try{Thread.sleep(25);}catch(Exception e){;} g.drawImage(red_checker
+		 * ,61+searchmoves[0]*29+9,6+searchmoves[0]*3+28*y+9,this);
+		 */
+		repaint();
+		ShowYourTurnLabel();
+		searchengine = null;
+		players_move = true;
+		EnableRestartButton(true);
+		/*
+		 * if(win()!=0) { g.clearRect(25,250,150,35);
+		 * g.drawString("I Win! Click Restart!",25,265); players_move=false; }
+		 * 
+		 * g.dispose();
+		 */
+	}
+
+	private void unmake_move(int move) {
+		int y;
+		for (y = 0; y < 7; ++y)
+			if (game_board[(y << 3) + move] != 0)
+				break;
+		game_board[(y << 3) + move] = 0;
+	}
+
+	void make_move(int move, int color) {
+		int y;
+		for (y = 0; y < 7; ++y)
+			if (game_board[(y << 3) + move] != 0)
+				break;
+		game_board[((y - 1) << 3) + move] = color;
+	}
+
+	private int win() {
+		int x, y, c, x2, y2, ct = 0;
+
+		for (x = 0; x < 7; ++x)
+			if (game_board[x] != 0)
+				++ct;
+		if (ct == 7)
+			return 69; // tie
+		for (y = 0; y < 7; ++y) {
+			for (x = 0; x < 7; ++x) {
+				if ((c = game_board[(x << 3) + y]) != 0) {
+					// horizontal win
+					for (ct = 0, y2 = y + 1; y2 < 7
+							&& game_board[(x << 3) + y2] == c; ++y2, ++ct)
+						;
+					if (ct == 3) {
+						return c;
+					}
+					// vertical win //
+					for (ct = 0, x2 = x + 1; x2 < 7
+							&& game_board[(x2 << 3) + y] == c; ++x2, ++ct)
+						;
+					if (ct == 3) {
+						return c;
+					}
+					// downward diagnal win //
+					for (ct = 0, x2 = x + 1, y2 = y + 1; x2 < 7 && y2 < 7
+							&& game_board[(x2 << 3) + y2] == c; ++ct, ++x2, ++y2)
+						;
+					if (ct == 3) {
+						return c;
+					}
+					// upward diagnal win //
+					for (ct = 0, x2 = x + 1, y2 = y - 1; x2 < 7 && y2 >= 0
+							&& game_board[(x2 << 3) + y2] == c; ++ct, ++x2, --y2)
+						;
+					if (ct == 3) {
+						return c;
+					}
+				}
+			}
+		}
+		return 0;
+	}
+
+	private int evaluate_position() {
+		int x, y, c, x2, y2, ct, score = 0;
+
+		for (y = 0; y < 7; ++y) {
+			for (x = 0; x < 7; ++x) {
+				if ((c = game_board[(x << 3) + y]) != 0) {
+					if (y == 0 || y == 7)
+						score -= 7;
+					// horizontal win //
+					for (ct = 0, y2 = y + 1; y2 < 7
+							&& game_board[(x << 3) + y2] == c; ++y2, ++ct)
+						;
+					if (ct == 3)
+						score += (c << 9);
+					if (ct == 2)
+						score += (c << 6);
+					if (ct == 1)
+						score += (c << 5);
+
+					// vertical win //
+					for (ct = 0, x2 = x + 1; x2 < 7
+							&& game_board[(x2 << 3) + y] == c; ++x2, ++ct)
+						;
+					if (ct == 3)
+						score += (c << 9);
+					if (ct == 2)
+						score += (c << 6);
+					if (ct == 1)
+						score += (c << 5);
+
+					// downward diagnal win //
+					for (ct = 0, x2 = x + 1, y2 = y + 1; x2 < 7 && y2 < 7
+							&& game_board[(x2 << 3) + y2] == c; ++ct, ++x2, ++y2)
+						;
+					if (ct == 3)
+						score += (c << 9);
+					if (ct == 2)
+						score += (c << 6);
+					if (ct == 1)
+						score += (c << 5);
+
+					// upward diagnal win //
+					for (ct = 0, x2 = x + 1, y2 = y - 1; x2 < 7 && y2 >= 0
+							&& game_board[(x2 << 3) + y2] == c; ++ct, ++x2, --y2)
+						;
+					if (ct == 3)
+						score += (c << 9);
+					if (ct == 2)
+						score += (c << 6);
+					if (ct == 1)
+						score += (c << 5);
+				}
+			}
+		}
+		return score + (int) Math.floor(Math.random() * 15);
+	}
+
+	private int search() {
+		int ct, score, highscore, x;
+		int generated_moves[];
+
+		try {
+			Thread.sleep(25);
+		} catch (InterruptedException e) {
+			;
+		}
+
+		generated_moves = new int[9];
+
+		++ply;
+		player *= -1;
+		highscore = player * -32000;
+
+		if (ply < SEARCHPLY) {
+			generate_moves(generated_moves);
+			for (ct = 0; ct < 7 && generated_moves[ct] != 99; ct++) {
+				make_move(generated_moves[ct], player);
+
+				if ((score = win()) != 0)
+					score = score * (10000 >> ply); // 10000/ply
+				else
+					score = search();
+
+				if (player == 1) {
+					if (score > highscore) {
+						highscore = score;
+						searchmoves[ply - 1] = generated_moves[ct];
+					}
+				} else {
+					if (score < highscore) {
+						highscore = score;
+						searchmoves[ply - 1] = generated_moves[ct];
+					}
+				}
+				unmake_move(generated_moves[ct]);
+			}
+		} else {
+
+			--ply;
+			player *= -1;
+			return evaluate_position();
+		}
+
+		--ply;
+		player *= -1;
+		return highscore;
+	}
+
+	private void generate_moves(int moves[]) {
+		int x, move_ct = 0;
+		for (x = 0; x < 7; ++x)
+			if (game_board[x] == 0)
+				moves[move_ct++] = x;
+		moves[move_ct] = 99; // magic number for end of list
+	}
+
+}

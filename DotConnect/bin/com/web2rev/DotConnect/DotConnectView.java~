@@ -1,0 +1,51 @@
+package com.web2rev.DotConnect;
+
+
+import android.widget.ImageView;
+import android.app.Activity;
+import android.os.Bundle;
+import android.graphics.*;
+import android.content.Context;
+
+public class DotConnectView extends ImageView {
+	public final int TOP_SPACE=85;
+	public DotConnectView(Context context) {
+		super(context);
+	setBackgroundResource(R.drawable.con4);
+		setAdjustViewBounds(true);
+		invalidate();
+		
+	}
+	@Override
+	protected void onDraw(Canvas canvas) {
+		super.onDraw(canvas);
+		DotConnectActivity mainActivity = DotConnectActivity.mainActivity;
+		GameEngine gameEngine = mainActivity.gameEngine;
+		int x, y;
+		
+  Paint p = new Paint();          
+  p.setColor(Color.RED);        
+  canvas.drawLine (0,0,100,100,p);
+  	
+  canvas.drawBitmap(gameEngine.blue_checker,50,50,null);
+		Paint mTextPaint = new Paint();
+        mTextPaint.setAntiAlias(true);
+        mTextPaint.setTextSize(16);
+        mTextPaint.setColor(0xFF000000);
+       mTextPaint.setARGB(255, 255, 255, 255);
+       canvas.drawText("Hello", 55, 125,mTextPaint);
+		
+		for (x = 0; x < 7; ++x)
+			for (y = 0; y < 7; ++y)
+				if (gameEngine.draw_board[(y << 3) + x] != 1)
+					canvas.drawBitmap(
+							gameEngine.draw_board[(y << 3) + x] == 0 ? gameEngine.red_checker
+									: gameEngine.blue_checker, 61 + x * 29 + 9,
+							6 + x * 3 + 28 * y + 9, null);
+		if (gameEngine.players_move)
+			gameEngine.ShowYourTurnLabel();
+		else
+			gameEngine.ShowThinkingLabel();
+			
+	}
+}
